@@ -77,7 +77,7 @@ public:
         return fs.open(path.c_str(), "w");
     }
 
-    void mkdir(const Text& path) const {
+    void mkdir(const Text& tpath) const {
 #ifdef ESP32
         Text::Cstr path = tpath.c_str();
         if (!fs.exists(path)) {
