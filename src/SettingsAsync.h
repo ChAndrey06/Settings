@@ -20,9 +20,9 @@
 class SettingsAsync : public sets::SettingsBase {
    public:
 #ifndef SETT_NO_DB
-    SettingsAsync(const String &title = "", GyverDB *db = nullptr) : sets::SettingsBase(title, db), server(80) {}
+    SettingsAsync(const String &title = "", GyverDB *db = nullptr, sets::FSWrapper* fsw = &sets::LittleFSWrapper) : sets::SettingsBase(title, db, fsw), server(80) {}
 #else
-    SettingsAsync(const String &title = "") : sets::SettingsBase(title), server(80) {}
+    SettingsAsync(const String &title = "", sets::FSWrapper* fsw = &sets::LittleFSWrapper) : sets::SettingsBase(title, fsw), server(80) {}
 #endif
 
     void begin(bool useDns = true) {
@@ -53,7 +53,7 @@ class SettingsAsync : public sets::SettingsBase {
             if (request->hasParam("path")) path = request->getParam("path")->value();
 
             if (authenticate(Text(auth).toInt32HEX())) {
-                AsyncWebServerResponse *response = request->beginResponse(ST_FS, path, emptyString);
+                AsyncWebServerResponse *response = request->beginResponse(_fsw->fs, path, emptyString);
                 cors_h(response);
                 request->send(response);
                 if (fetch_cb) fetch_cb(path);
@@ -68,7 +68,7 @@ class SettingsAsync : public sets::SettingsBase {
             if (request->hasParam("path")) path = request->getParam("path")->value();
             if (!authenticate(Text(auth).toInt32HEX())) return;
             
-            if (!index) _file = sets::FS.openWrite(path);
+            if (!index) _file = _fsw->openWrite(path);
             if (len && _file) _file.write(data, len);
             if (final && _file) {
                 _file.close();
@@ -115,7 +115,7 @@ class SettingsAsync : public sets::SettingsBase {
             else {
                 AsyncWebServerResponse *response;
                 if (!custom.isFile) response = request->beginResponse_P(200, "text/javascript", (const uint8_t *)custom.p, custom.len);
-                else response = request->beginResponse(ST_FS, custom.p, "text/javascript");
+                else response = request->beginResponse(_fsw->fs, custom.p, "text/javascript");
                 if (!response) return;
 
                 if (custom.gz) gzip_h(response);

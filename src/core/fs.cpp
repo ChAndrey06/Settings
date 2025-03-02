@@ -2,6 +2,7 @@
 
 namespace sets {
 
-FSClass FS;
+LittleFSWrapperClass LittleFSWrapper;
+SDFSWrapperClass SDFSWrapper;
 
 }  // namespace sets

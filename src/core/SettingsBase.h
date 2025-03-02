@@ -29,6 +29,7 @@ class SettingsBase {
     static const uint16_t DB_WS_UPDATE_PRD = 300;
 
    protected:
+    FSWrapper* _fsw;
     typedef std::function<void(Builder& b)> BuildCallback;
     typedef std::function<void(Updater& upd)> UpdateCallback;
     typedef std::function<void(Text path)> FileCallback;
@@ -108,9 +109,9 @@ class SettingsBase {
 
    public:
 #ifndef SETT_NO_DB
-    SettingsBase(const String& title = "", GyverDB* db = nullptr) : _title(title), _db(db) {
+    SettingsBase(const String& title = "", GyverDB* db = nullptr, FSWrapper* fsw = &LittleFSWrapper) : _fsw(fsw), _title(title), _db(db) {
 #else
-    SettingsBase(const String& title = "") : _title(title) {
+    SettingsBase(const String& title = "", FSWrapper* fsw = &LittleFSWrapper) : _title(title), _fsw(fsw) {
 #endif
         useAutoUpdates(true);
     }
@@ -123,6 +124,10 @@ class SettingsBase {
     // установить заголовок страницы
     void setTitle(const String& title) {
         _title = title;
+    }
+
+    void setFS(FSWrapper* fsw) {
+        _fsw = fsw;
     }
 
     // установить период обновлений (умолч. 2500мс), 0 чтобы отключить
@@ -233,7 +238,7 @@ class SettingsBase {
         custom.p = path;
         custom.gz = gz;
         custom.hash = 0;
-        File f = sets::FS.openRead(custom.p);
+        File f = _fsw->openRead(custom.p);
         if (f) {
             while (f.available()) custom.hash += f.read();
         }
@@ -404,7 +409,7 @@ class SettingsBase {
 
             case SH("remove"):
                 if (granted) {
-                    FS.remove(value);
+                    _fsw->remove(value);
                     _sendFs(true);
                     return;
                 }
@@ -412,7 +417,7 @@ class SettingsBase {
 
             case SH("create"):
                 if (granted) {
-                    FS.openWrite(value);
+                    _fsw->openWrite(value);
                     _sendFs(true);
                     return;
                 }
@@ -457,14 +462,14 @@ class SettingsBase {
 
     void _sendFs(bool granted) {
         String str;
-        if (granted) FS.listDir(str, "/", true);
+        if (granted) _fsw->listDir(str, "/", true);
 
         Packet p;
         p('{');
         p[Code::type] = Code::fs;
         p[Code::content] = str;
-        p[Code::used] = FS.usedSpace();
-        p[Code::total] = FS.totalSpace();
+        p[Code::used] = _fsw->usedSpace();
+        p[Code::total] = _fsw->totalSpace();
         if (!granted) p[Code::error] = F("Access denied");
         p('}');
         _answer(p);

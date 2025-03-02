@@ -19,9 +19,9 @@
 class SettingsESP : public sets::SettingsBase {
    public:
 #ifndef SETT_NO_DB
-    SettingsESP(const String& title = "", GyverDB* db = nullptr) : sets::SettingsBase(title, db), server(80) {}
+    SettingsESP(const String& title = "", GyverDB* db = nullptr, sets::FSWrapper* fsw = &sets::LittleFSWrapper) : sets::SettingsBase(title, db, fsw), server(80) {}
 #else
-    SettingsESP(const String& title = "") : sets::SettingsBase(title), server(80) {}
+    SettingsESP(const String& title = "", sets::FSWrapper* fsw = &sets::LittleFSWrapper) : sets::SettingsBase(title, fsw), server(80) {}
 #endif
 
     void begin(bool useDns = true) {
@@ -51,7 +51,7 @@ class SettingsESP : public sets::SettingsBase {
             }
 
             String path = server.arg(F("path"));
-            File f = sets::FS.openRead(path);
+            File f = _fsw->openRead(path);
             if (f) server.streamFile(f, "text/plain");
             else server.send(500);
             if (fetch_cb) fetch_cb(path);
@@ -66,7 +66,7 @@ class SettingsESP : public sets::SettingsBase {
             HTTPUpload& upload = server.upload();
             if (upload.status == UPLOAD_FILE_START) {
                 String path = server.arg(F("path"));
-                _file = sets::FS.openWrite(path);
+                _file = _fsw->openWrite(path);
             } else if (upload.status == UPLOAD_FILE_WRITE) {
                 if (_file) _file.write(upload.buf, upload.currentSize);
             } else if (upload.status == UPLOAD_FILE_END) {
@@ -120,7 +120,7 @@ class SettingsESP : public sets::SettingsBase {
                 if (custom.gz) gzip_h();
                 if (!custom.isFile) server.send_P(200, "text/javascript", custom.p, custom.len);
                 else {
-                    File f = sets::FS.openRead(custom.p);
+                    File f = _fsw->openRead(custom.p);
                     if (f) server.streamFile(f, "text/javascript");
                     else server.send(500);
                 }

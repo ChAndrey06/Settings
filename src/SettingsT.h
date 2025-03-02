@@ -15,9 +15,9 @@ template <typename server_t, typename client_t>
 class SettingsT : public sets::SettingsBase {
    public:
 #ifndef SETT_NO_DB
-    SettingsT(const String& title = "", GyverDB* db = nullptr) : sets::SettingsBase(title, db), server(80) {}
+    SettingsT(const String& title = "", GyverDB* db = nullptr, sets::FSWrapper* fsw = &sets::LittleFSWrapper) : sets::SettingsBase(title, db, fsw), server(80) {}
 #else
-    SettingsT(const String& title = "") : sets::SettingsBase(title), server(80) {}
+    SettingsT(const String& title = "", sets::FSWrapper* fsw = &sets::LittleFSWrapper) : sets::SettingsBase(title, fsw), server(80) {}
 #endif
 
     void begin(bool useDns = true) {
@@ -40,7 +40,7 @@ class SettingsT : public sets::SettingsBase {
                 case SH("/fetch"):
                     if (authenticate(req.param("auth").toInt32HEX())) {
                         String path = req.param("path").decodeUrl();
-                        File f = sets::FS.openRead(path);
+                        File f = _fsw->openRead(path);
                         if (f) server.sendFile(f);
                         else server.send(500);
                         if (fetch_cb) fetch_cb(path);
@@ -52,7 +52,7 @@ class SettingsT : public sets::SettingsBase {
                 case SH("/upload"):
                     if (authenticate(req.param("auth").toInt32HEX())) {
                         String path = req.param("path").decodeUrl();
-                        File f = sets::FS.openWrite(path);
+                        File f = _fsw->openWrite(path);
                         if (f) {
                             req.body().writeTo(f);
                             server.send(200);
@@ -91,7 +91,7 @@ class SettingsT : public sets::SettingsBase {
                     else {
                         if (!custom.isFile) server.sendFile_P((const uint8_t*)custom.p, custom.len, "text/javascript", false, custom.gz);
                         else {
-                            File f = sets::FS.openRead(custom.p);
+                            File f = _fsw->openRead(custom.p);
                             if (f) server.sendFile(f, "text/javascript", false, custom.gz);
                             else server.send(500);
                         }
